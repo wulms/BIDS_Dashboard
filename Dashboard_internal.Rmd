@@ -1,5 +1,4 @@
 ---
-title: "Dashboard_internal"
 output: 
   flexdashboard::flex_dashboard:
     orientation: columns
@@ -8,35 +7,248 @@ output:
 
 ```{r setup, include=FALSE}
 library(flexdashboard)
-knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(DT)
+library(highcharter)
+library(plotly)
+library(ggplot2)
+library(RColorBrewer)
 
-# On Linux
-knitr::opts_knit$set(root.dir = working_dir)
+source("functions.R")
 
+# knitr::opts_chunk$set(echo = TRUE)
+working_dir <- ("/mnt/TB8Drive/Bidirect_Neuroimaging/BIDS/base_protocol/sourcedata/") 
 setwd(working_dir)
+
+metadata_df <- read_metadata()
+metadata_df %>% count(level)
+metadata_dataset <- metadata_df %>% filter(!is.na(Authors)) %>% extract_metadata(0)
+metadata_level_0 <- metadata_df %>% filter(is.na(Authors)) %>% extract_metadata(0) # root folder data
+metadata_level_1 <- metadata_df %>% filter(is.na(Authors)) %>% extract_metadata(1)
+metadata_level_2 <- metadata_df %>% filter(is.na(Authors)) %>% extract_metadata(2)
+metadata_level_3 <- metadata_df %>% filter(is.na(Authors)) %>% extract_metadata(3)
 ```
 
-Column {data-width=650}
+---
+pagetitle: `r metadata_dataset$Name`
+---
+
+Overview
+=======================================================================
+
+Column {data-width=150}
 -----------------------------------------------------------------------
 
-### Chart A
+### Dataset information
+
+__Authors:__ `r metadata_dataset$Authors`  
+__Funding:__ `r metadata_dataset$Funding`  
+__How to acknowledge:__ `r metadata_dataset$HowToAcknowledge`  
+__License__: `r metadata_dataset$License`  
+__References and Links:__ `r metadata_dataset$ReferencesAndLinks`  
+__BIDS Version:__ `r metadata_dataset$BIDSVersion`  
+__Subject Regex:__ r metadata_dataset$subject_regex
+
+### Total files
 
 ```{r}
-
+valueBox(n_distinct(metadata_level_3$filename),
+         icon = "fa-pencil")
 ```
 
-Column {data-width=350}
+### Unique Sessions
+
+```{r}
+valueBox(n_distinct(metadata_level_3$session),
+         icon = "fa-pencil")
+```
+
+### Unique Subjects
+
+```{r}
+valueBox(n_distinct(metadata_level_3$subject),
+         icon = "fa-pencil")
+```
+
+### Sequence Types
+
+```{r}
+valueBox(n_distinct(metadata_level_3$sequence),
+         icon = "fa-pencil")
+```
+
+
+
+
+Column {data-width=500}
 -----------------------------------------------------------------------
 
-### Chart B
+### Plot
 
 ```{r}
+p <-metadata_level_3 %>%
+  group_by(session, type, sequence) %>%
+  count() %>%
+  ggplot(aes(x = session, y = n, fill = sequence)) +
+  geom_bar(stat="identity", position=position_dodge()) +
+  theme_minimal() +
+  facet_wrap(~type + sequence) +
+  scale_fill_brewer(palette="Dark2")
 
+ggplotly(p)
 ```
 
-### Chart C
+
+### Study information
+
+```{r}
+metadata_level_3 %>%
+  group_by(session, type, sequence) %>%
+  count() %>%
+  spread(session, n) %>%
+  DT::datatable(options = list(
+  pageLength = 25
+))
+```
+
+
+Metadata levels 
+========================================================
+
+
+Metadata {data-width=500}
+-------------------------------------------------------------------------
+
+### Metadata level 0 (root folder)
+
+```{r}
+metadata_level_0 %>%
+  DT::datatable(options = list(
+  pageLength = 25
+))
+```
+
+### Metadata level 1 (subject folder)
+
+```{r}
+metadata_level_1 %>%
+  DT::datatable(options = list(
+  pageLength = 25
+))
+```
+
+
+Metadata {data-width=500}
+-----------------------------------------------------------------
+
+### Metadata level 2 (session folder)
+
+```{r}
+metadata_level_2 %>%
+  DT::datatable(options = list(
+  pageLength = 25
+))
+```
+
+### Metadata level 3 (sequence folder)
+
+```{r}
+metadata_level_3 %>%
+  DT::datatable(options = list(
+  pageLength = 25
+))
+```
+
+
+Sensitive Information
+===============================================================================
+Extracted from JSON files
+
+Column {data-width=150}
+--------------------------------------------------------
+### PatientID
+
+```{r}
+valueBox(sum(!is.na(metadata_level_3$PatientID)),
+         icon = "fa-pencil")
+```
+
+### PatientName
+
+```{r}
+valueBox(sum(!is.na(metadata_level_3$PatientName)),
+         icon = "fa-pencil")
+```
+
+### PatientBirthDate
+
+```{r}
+valueBox(sum(!is.na(metadata_level_3$PatientBirthDate)),
+         icon = "fa-pencil")
+```
+
+### PatientSex
+
+```{r}
+valueBox(sum(!is.na(metadata_level_3$PatientSex)),
+         icon = "fa-pencil")
+```
+
+### PatientWeight
+
+```{r}
+valueBox(sum(!is.na(metadata_level_3$PatientWeight)),
+         icon = "fa-pencil")
+```
+
+### AcquisitionDateTime
+
+```{r}
+valueBox(sum(!is.na(metadata_level_3$AcquisitionDateTime)),
+         icon = "fa-pencil")
+```
+
+
+Column {data-width=500}
+--------------------------------------------------------
+
+### Overview
 
 ```{r}
 
+
+metadata_level_3 %>%
+  select(subject, PatientID, PatientName, session, PatientBirthDate, PatientSex, PatientWeight) %>%
+  unique() %>%
+  DT::datatable(options = list(
+  pageLength = 25
+))
+```
+
+### ID Overview 
+```{r}
+
+str_to_remove = regex("bidirect|bd", ignore_case = TRUE)
+
+clean_string <- function(input, pattern) {
+  library(stringr)
+  input %>%
+    str_remove_all(pattern) %>%
+    str_remove_all("[:punct:]+") %>%
+    str_remove_all(str_to_remove)
+  }
+
+metadata_level_3 %>%
+  select(subject, PatientID, PatientName) %>%
+  mutate(subject = str_remove(subject, "sub-"),
+    PatientID = clean_string(PatientID, subject),
+         PatientName = clean_string(PatientName, subject)) %>%
+  select(-subject) %>% 
+  unique() %>%
+  DT::datatable(options = list(
+  pageLength = 25
+))
 ```
 

@@ -52,23 +52,20 @@ measure_time <- function(i, df, start) {
 
 
 # Extraction of JSON metadata ---------------------------------------------
-get_json_headers <- function(json) {
+get_json_headers <- function(json, working_dir) {
   setwd(working_dir)
   start <- start_time()
+  
+  mri_properties <- vector()
+  str(mri_properties)
   for (i in 1:length(json)) {
     list_items(i, json, "Extraction of Headers - appending to one structure")
     measure_time(i, json, start)
-    
-    if (i == 1) {
-      mri_properties_new <- names(fromJSON(file = json[i]))
-      mri_properties <- mri_properties_new
-    }
-    if (i > 1) {
-      mri_properties_new <- names(fromJSON(file = json[i]))
-      mri_properties <- union(mri_properties, mri_properties_new)
-      # print(setdiff(mri_properties, mri_properties_new))
-    }
+    # Reading json headers
+    mri_properties_new <- names(rjson::fromJSON(file = json[i]))
+    mri_properties <- union(mri_properties, mri_properties_new)
   }
+  # Building df
   names = mri_properties %>% sort()
   empty_df <- data.frame()
   for (k in names)
@@ -80,16 +77,16 @@ get_json_headers <- function(json) {
 # Read metadata from files ------------------------------------------------
 read_json_headers <- function(json, empty_df) {
   setwd(working_dir)
-  if (file.exists("json_files.csv") == 1) {
-    file.remove("json_files.csv")
-    print("json_files.csv removed!")
+  if (file.exists("../json_files.tsv") == 1) {
+    file.remove("../json_files.tsv")
+    print("../json_files.csv removed!")
   }
   
   start <- start_time()
   for (i in 1:length(json)) {
     list_items(i, json, "Reading metadata into structure")
     measure_time(i, json, start)
-    result_new <- fromJSON(file = json[i], simplify = TRUE) %>% 
+    result_new <- rjson::fromJSON(file = json[i], simplify = TRUE) %>% 
       lapply(paste, collapse = ", ") %>% 
       bind_rows() %>%
       mutate(Path = json[i])
@@ -99,11 +96,11 @@ read_json_headers <- function(json, empty_df) {
     # result_new_1 <-
     #   result_new[, order(colnames(empty_df), decreasing = TRUE)]
     
-    if (file.exists("json_files.csv") == 0) {
+    if (file.exists("../json_files.tsv") == 0) {
       write.table(
         result_new,
-        "json_files.csv",
-        sep = ",",
+        "../json_files.tsv",
+        sep = "\t",
         dec = ".",
         qmethod = "double",
         row.names = FALSE
@@ -112,8 +109,8 @@ read_json_headers <- function(json, empty_df) {
       # Here data gets only appended to csv
       write.table(
         result_new,
-        "json_files.csv",
-        sep = ",",
+        "../json_files.tsv",
+        sep = "\t",
         dec = ".",
         qmethod = "double",
         row.names = FALSE,
@@ -129,3 +126,20 @@ extract_metadata <- function(df, number) {
   df %>% filter(level == number) %>% select_if(~!all(is.na(.)))
 }
 
+extract_json_metadata <- function(working_dir) {
+  json_files <- tibble(files = index_jsons(working_dir)) 
+  metadata_empty_df <- get_json_headers(json_files$files, working_dir)
+  metadata_df <- read_json_headers(json_files$files, metadata_empty_df)
+  
+}
+
+read_metadata <- function() {
+  metadata_df <- readr::read_tsv("../json_files.tsv") %>% 
+    mutate(level = str_count(Path, "/")) %>% 
+    separate(Path, into = c("subject", "session", "type", "filename"), sep = "/") %>%
+    mutate(sequence = str_remove_all(filename, pattern = session) %>% 
+             str_remove(subject) %>% 
+             str_remove("__") %>% 
+             str_remove(".json")) 
+  return(metadata_df)
+}
