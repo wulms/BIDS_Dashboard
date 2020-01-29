@@ -140,6 +140,55 @@ read_metadata <- function() {
     mutate(sequence = str_remove_all(filename, pattern = session) %>% 
              str_remove(subject) %>% 
              str_remove("__") %>% 
-             str_remove(".json")) 
+             str_remove(".json") %>%
+             str_remove("-[:graph:]{1}$")) 
   return(metadata_df)
+}
+
+
+datatable_setting <- function(df) {
+  DT::datatable(
+    df,
+    extensions = c('Buttons', 'Scroller'),
+    options = list(
+      search = list(regex = TRUE),
+      searchHighlight = TRUE,
+      pageLength = 25,
+      dom = 'Bfrtip',
+      buttons = c('copy', 'csv', 'excel', 'print'),
+      deferRender = TRUE,
+      scrollY = 200,
+      scroller = TRUE
+    )
+  )
+}
+
+show_settings <- function(sequence_id) {
+  metadata_level_3 %>%
+    filter(str_detect(sequence, sequence_id) == 1) %>%
+    select(-filename,-subject,-session,-type,-level) %>%
+    select(
+      -AcquisitionNumber,
+      -ImageOrientationPatientDICOM,
+      -ImageType,
+      -ProcedureStepDescription,
+      -AccessionNumber,
+      -StudyID,
+      -StudyInstanceUID,
+      -SeriesNumber,
+      -SeriesInstanceUID
+    ) %>%
+    select(
+      -AcquisitionDateTime,
+      -AcquisitionTime,
+      -PatientBirthDate,
+      -PatientID,
+      -PatientSex,
+      -PatientName,
+      -PatientWeight,
+      -PhilipsRescaleSlope
+    ) %>%
+    mutate_if(is.numeric, round, digits = 2) %>%
+    group_by_all() %>%
+    count()
 }

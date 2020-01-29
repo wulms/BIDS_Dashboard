@@ -2,7 +2,7 @@
 output: 
   flexdashboard::flex_dashboard:
     orientation: columns
-    vertical_layout: fill
+    vertical_layout: scroll
 ---
 
 ```{r setup, include=FALSE}
@@ -15,6 +15,8 @@ library(highcharter)
 library(plotly)
 library(ggplot2)
 library(RColorBrewer)
+library(lubridate)
+
 
 source("functions.R")
 
@@ -152,15 +154,6 @@ metadata_level_2 %>%
 ))
 ```
 
-### Metadata level 3 (sequence folder)
-
-```{r}
-metadata_level_3 %>%
-  DT::datatable(options = list(
-  pageLength = 25
-))
-```
-
 
 Sensitive Information
 ===============================================================================
@@ -219,18 +212,35 @@ Column {data-width=500}
 ```{r}
 
 
+
 metadata_level_3 %>%
-  select(subject, PatientID, PatientName, session, PatientBirthDate, PatientSex, PatientWeight) %>%
+  select(
+    subject,
+    PatientID,
+    PatientName,
+    session,
+    AcquisitionDateTime,
+    PatientBirthDate,
+    PatientSex,
+    PatientWeight
+  ) %>%
+  mutate(AcquisitionDateTime = as.Date(AcquisitionDateTime)) %>%
   unique() %>%
-  DT::datatable(options = list(
-  pageLength = 25
-))
+  datatable_setting()
+
 ```
 
-### ID Overview 
+ID Validation
+==================================================
+
+Column {data.width = 500}
+--------------------------------------------------------
+
+### ID changes - Shapeshifters
+
 ```{r}
 
-str_to_remove = regex("bidirect|bd", ignore_case = TRUE)
+str_to_remove = regex("bi(b|d|dd)ire(c|k|tc)t|bd", ignore_case = TRUE)
 
 clean_string <- function(input, pattern) {
   library(stringr)
@@ -241,14 +251,196 @@ clean_string <- function(input, pattern) {
   }
 
 metadata_level_3 %>%
-  select(subject, PatientID, PatientName) %>%
-  mutate(subject = str_remove(subject, "sub-"),
+  select(session, subject, PatientID, PatientName) %>%
+  mutate(
+    subject = str_remove(subject, "sub-"),
     PatientID = clean_string(PatientID, subject),
-         PatientName = clean_string(PatientName, subject)) %>%
-  select(-subject) %>% 
+    PatientName = clean_string(PatientName, subject)
+  ) %>%
+  filter(PatientID != "" | PatientName != "") %>%
   unique() %>%
-  DT::datatable(options = list(
-  pageLength = 25
-))
+  datatable_setting()
+```
+
+### Birthdata - Reincarnated
+
+```{r}
+metadata_level_3 %>%
+  select(subject, PatientBirthDate) %>%
+  unique() %>%
+  count(subject) %>% filter(n > 1) %>%
+  left_join(metadata_level_3) %>%
+  select(subject, session, AcquisitionDateTime, PatientBirthDate) %>%
+  mutate(AcquisitionDateTime = as.Date(AcquisitionDateTime)) %>%
+  unique() %>%
+  group_by(subject) %>%
+  mutate(
+    Age = difftime(AcquisitionDateTime, PatientBirthDate) %>% time_length("years") %>% round(1),
+    BirthDateDiff = difftime(PatientBirthDate, lag(PatientBirthDate)) %>% time_length("years") %>% round(1)
+  ) %>%
+  datatable_setting()
+
+```
+
+Column {data.width = 500}
+-----------------------------------------------------------
+
+### Sex change - Clownfishes
+
+```{r}
+metadata_level_3 %>%
+  select(subject, PatientSex) %>%
+  unique() %>%
+  count(subject) %>% filter(n > 1) %>%
+  left_join(metadata_level_3) %>%
+  select(subject, session, PatientSex) %>% unique() %>%
+  datatable_setting()
+      
+    
+  
+```
+
+### Two acquisition dates at same session - Time travellers
+
+```{r}
+metadata_level_3 %>%
+  select(subject, session, AcquisitionDateTime) %>%
+  mutate(AcquisitionDateTime = as.Date(AcquisitionDateTime)) %>%
+  unique() %>%
+  group_by(subject) %>%
+  count(session) %>% filter(n > 1) %>%
+  datatable_setting()
+```
+
+Sequence ID Validation
+==========================================================================
+
+```{r}
+metadata_level_3 %>%
+  select(type, sequence, SeriesDescription, ProtocolName) %>%
+  group_by_all() %>%
+  count() %>%
+  datatable_setting()
+```
+
+
+Duplicates
+==========================================================================
+
+Column {data.width=500}
+------------------------------------------------------------------------
+
+### Identified duplicates
+```{r}
+metadata_level_3 %>%
+  select(subject, session, sequence) %>% 
+  group_by_all () %>% 
+  count() %>% 
+  filter(n > 1) %>%
+  left_join(metadata_level_3) %>% 
+  select(subject, session, sequence, filename) %>% 
+  unique() %>%
+  datatable_setting()
+```
+
+Settings - anat
+================================================================================
+
+### T1w
+
+```{r}
+show_settings("T1w") %>% datatable_setting()
+```
+
+
+### T2w
+
+```{r}
+show_settings("T2w") %>% datatable_setting()
+```
+
+
+### T2star
+
+```{r}
+show_settings("T2star") %>% datatable_setting()
+```
+
+### T1map
+
+```{r}
+show_settings("T1map") %>% datatable_setting()
+```
+
+### T2map
+```{r}
+show_settings("T2map") %>% datatable_setting()
+```
+
+
+### FLAIR
+```{r}
+show_settings("FLAIR") %>% datatable_setting()
+```
+
+
+### PD
+```{r}
+show_settings("PD") %>% datatable_setting()
+```
+
+
+### PDT2
+```{r}
+show_settings("PDT2") %>% datatable_setting()
+```
+
+
+### inplaneT1
+```{r}
+show_settings("inplaneT1") %>% datatable_setting()
+```
+
+
+### inplaneT2
+```{r}
+show_settings("inplaneT2") %>% datatable_setting()
+```
+
+
+### Angio
+```{r}
+show_settings("angio") %>% datatable_setting()
+```
+
+
+### Defacemask
+```{r}
+show_settings("defacemask") %>% datatable_setting()
+```
+
+
+### SWI
+```{r}
+show_settings("swi") %>% datatable_setting()
+```
+
+
+Settings - dwi
+================================================================================
+
+### DWI
+```{r}
+show_settings("dwi") %>% datatable_setting()
+```
+
+
+Settings - task
+================================================================================
+
+### Task
+
+```{r}
+show_settings("bold") %>% datatable_setting()
 ```
 
