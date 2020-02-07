@@ -192,3 +192,38 @@ show_settings <- function(sequence_id) {
     group_by_all() %>%
     count()
 }
+
+
+show_settings_external <- function(sequence_id) {
+  metadata_level_3 %>%
+    filter(str_detect(sequence, sequence_id) == 1) %>%
+    select(-filename,
+           -subject,
+           -session,
+           -type,
+           -level) %>%
+    select(
+      -AcquisitionNumber,
+      -ImageOrientationPatientDICOM,
+      -ImageType,
+      -ProcedureStepDescription,
+      -AccessionNumber,
+      -StudyID,
+      -StudyInstanceUID,
+      -SeriesNumber,
+      -SeriesInstanceUID
+    ) %>%
+    select(
+      -AcquisitionDateTime,
+      -AcquisitionTime,
+
+      -PatientID,
+
+      -PatientName,
+
+      -PhilipsRescaleSlope
+    ) %>%
+    mutate_if(is.numeric, round, digits = 2) %>%
+    group_by_all() %>%
+    count()
+}

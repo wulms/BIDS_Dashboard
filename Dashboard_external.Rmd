@@ -26,6 +26,7 @@ working_dir <- ("/mnt/TB8Drive/Bidirect_Neuroimaging/BIDS/base_protocol/sourceda
 setwd(working_dir)
 
 metadata_df <- read_metadata()
+metadata_df <- metadata_df %>% select(-PatientBirthDate, -PatientSex, -PatientWeight) 
 metadata_df %>% count(level)
 metadata_dataset <- metadata_df %>% filter(!is.na(Authors)) %>% extract_metadata(0)
 metadata_level_0 <- metadata_df %>% filter(is.na(Authors)) %>% extract_metadata(0) # root folder data
@@ -221,9 +222,6 @@ metadata_level_3 %>%
     PatientName,
     session,
     AcquisitionDateTime,
-    PatientBirthDate,
-    PatientSex,
-    PatientWeight
   ) %>%
   mutate(AcquisitionDateTime = as.Date(AcquisitionDateTime)) %>%
   unique() %>%
@@ -266,20 +264,20 @@ metadata_level_3 %>%
 ### Birthdata - Reincarnated
 
 ```{r}
-metadata_level_3 %>%
-  select(subject, PatientBirthDate) %>%
-  unique() %>%
-  count(subject) %>% filter(n > 1) %>%
-  left_join(metadata_level_3) %>%
-  select(subject, session, AcquisitionDateTime, PatientBirthDate) %>%
-  mutate(AcquisitionDateTime = as.Date(AcquisitionDateTime)) %>%
-  unique() %>%
-  group_by(subject) %>%
-  mutate(
-    Age = difftime(AcquisitionDateTime, PatientBirthDate) %>% time_length("years") %>% round(1),
-    BirthDateDiff = difftime(PatientBirthDate, lag(PatientBirthDate)) %>% time_length("years") %>% round(1)
-  ) %>%
-  datatable_setting()
+# metadata_level_3 %>%
+#   select(subject, PatientBirthDate) %>%
+#   unique() %>%
+#   count(subject) %>% filter(n > 1) %>%
+#   left_join(metadata_level_3) %>%
+#   select(subject, session, AcquisitionDateTime, PatientBirthDate) %>%
+#   mutate(AcquisitionDateTime = as.Date(AcquisitionDateTime)) %>%
+#   unique() %>%
+#   group_by(subject) %>%
+#   mutate(
+#     Age = difftime(AcquisitionDateTime, PatientBirthDate) %>% time_length("years") %>% round(1),
+#     BirthDateDiff = difftime(PatientBirthDate, lag(PatientBirthDate)) %>% time_length("years") %>% round(1)
+#   ) %>%
+#   datatable_setting()
 
 ```
 
@@ -289,15 +287,15 @@ Column {data.width = 500}
 ### Sex change - Clownfishes
 
 ```{r}
-metadata_level_3 %>%
-  select(subject, PatientSex) %>%
-  unique() %>%
-  count(subject) %>% filter(n > 1) %>%
-  left_join(metadata_level_3) %>%
-  select(subject, session, PatientSex) %>% unique() %>%
-  datatable_setting()
-      
-    
+# metadata_level_3 %>%
+#   select(subject, PatientSex) %>%
+#   unique() %>%
+#   count(subject) %>% filter(n > 1) %>%
+#   left_join(metadata_level_3) %>%
+#   select(subject, session, PatientSex) %>% unique() %>%
+#   datatable_setting()
+#       
+#     
   
 ```
 
@@ -350,80 +348,80 @@ Settings - anat
 ### T1w
 
 ```{r}
-show_settings("T1w") %>% datatable_setting()
+show_settings_external("T1w") %>% datatable_setting()
 ```
 
 
 ### T2w
 
 ```{r}
-show_settings("T2w") %>% datatable_setting()
+show_settings_external("T2w") %>% datatable_setting()
 ```
 
 
 ### T2star
 
 ```{r}
-show_settings("T2star") %>% datatable_setting()
+show_settings_external("T2star") %>% datatable_setting()
 ```
 
 ### T1map
 
 ```{r}
-show_settings("T1map") %>% datatable_setting()
+show_settings_external("T1map") %>% datatable_setting()
 ```
 
 ### T2map
 ```{r}
-show_settings("T2map") %>% datatable_setting()
+show_settings_external("T2map") %>% datatable_setting()
 ```
 
 
 ### FLAIR
 ```{r}
-show_settings("FLAIR") %>% datatable_setting()
+show_settings_external("FLAIR") %>% datatable_setting()
 ```
 
 
 ### PD
 ```{r}
-show_settings("PD") %>% datatable_setting()
+show_settings_external("PD") %>% datatable_setting()
 ```
 
 
 ### PDT2
 ```{r}
-show_settings("PDT2") %>% datatable_setting()
+show_settings_external("PDT2") %>% datatable_setting()
 ```
 
 
 ### inplaneT1
 ```{r}
-show_settings("inplaneT1") %>% datatable_setting()
+show_settings_external("inplaneT1") %>% datatable_setting()
 ```
 
 
 ### inplaneT2
 ```{r}
-show_settings("inplaneT2") %>% datatable_setting()
+show_settings_external("inplaneT2") %>% datatable_setting()
 ```
 
 
 ### Angio
 ```{r}
-show_settings("angio") %>% datatable_setting()
+show_settings_external("angio") %>% datatable_setting()
 ```
 
 
 ### Defacemask
 ```{r}
-show_settings("defacemask") %>% datatable_setting()
+show_settings_external("defacemask") %>% datatable_setting()
 ```
 
 
 ### SWI
 ```{r}
-show_settings("swi") %>% datatable_setting()
+show_settings_external("swi") %>% datatable_setting()
 ```
 
 
@@ -432,7 +430,7 @@ Settings - dwi
 
 ### DWI
 ```{r}
-show_settings("dwi") %>% datatable_setting()
+show_settings_external("dwi") %>% datatable_setting()
 ```
 
 
@@ -442,6 +440,6 @@ Settings - task
 ### Task
 
 ```{r}
-show_settings("bold") %>% datatable_setting()
+show_settings_external("bold") %>% datatable_setting()
 ```
 
